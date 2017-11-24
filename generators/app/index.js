@@ -23,6 +23,7 @@ module.exports = class extends Generator {
 		this.passedInOptions = {
 			name: this.options.name,
 			pre: this.options.pre,
+			bundler: this.options.bundler,
 			js: this.options.js,
 			viewExt: this.options.viewExt,
 			clientTpl: this.options.clientTpl,
@@ -43,6 +44,13 @@ module.exports = class extends Generator {
 			desc: `your desired preprocessor [${this.preOptions.join('|')}]`,
 			type: String,
 			defaults: this.passedInOptions.pre || this.preOptions[1],
+		});
+
+		this.bundlerOptions = ['gulp', 'webpack'];
+		this.option('bundler', {
+			desc: `your desired bundler [${this.bundlerOptions.join('|')}]`,
+			type: String,
+			defaults: this.passedInOptions.bundler || this.bundlerOptions[1],
 		});
 
 		this.jsOptions = ['JavaScript', 'TypeScript'];
@@ -119,6 +127,7 @@ module.exports = class extends Generator {
 				if (config) {
 					this.options.name = config.name || this.options.name;
 					this.options.pre = config.preprocessor || this.options.pre;
+					this.options.bundler = config.bundler || this.options.bundler;
 					this.options.js = config.jscompiler || this.options.js;
 					this.options.viewExt = config.viewExtension || this.options.viewExt;
 					this.options.clientTpl = typeof config.clientTemplates === 'boolean' ? config.clientTemplates : this.options.clientTpl;
@@ -144,6 +153,15 @@ module.exports = class extends Generator {
 					default: this.options.pre,
 					store: true,
 					when: () => !this.passedInOptions.pre,
+				},
+				{
+					name: 'bundler',
+					type: 'list',
+					message: 'What\'s your desired bundler?',
+					choices: this.bundlerOptions,
+					default: this.options.bundler,
+					store: true,
+					when: () => !this.passedInOptions.bundler,
 				},
 				/* {
 					name: 'js',
@@ -198,6 +216,7 @@ module.exports = class extends Generator {
 			]).then((answers) => {
 				this.options.name = answers.name || this.options.name;
 				this.options.pre = answers.pre || this.options.pre;
+				this.options.bundler = answers.bundler || this.options.bundler;
 				this.options.js = answers.js || this.options.js;
 				this.options.viewExt = answers.viewExt || this.options.viewExt;
 				this.options.clientTpl = answers.clientTpl !== undefined ? answers.clientTpl : this.options.clientTpl;
@@ -207,6 +226,7 @@ module.exports = class extends Generator {
 
 				this.config.set('name', this.options.name);
 				this.config.set('preprocessor', this.options.pre);
+				this.config.set('bundler', this.options.bundler);
 				this.config.set('jscompiler', this.options.js);
 				this.config.set('viewExtension', this.options.viewExt);
 				this.config.set('clientTemplates', this.options.clientTpl);
@@ -281,17 +301,11 @@ module.exports = class extends Generator {
 			'app/core/config.js',
 			'app/tests/jasmine/templating/patternSpec.js',
 			'config/default.js',
-			'config/default/assets.js',
-			'gulp/compile-css.js',
-			'gulp/compile-css-proto.js',
-			'gulp/compile-js.js',
 			'gulp/utils.js',
-			'gulp/watch-assets.js',
 			'project/.githooks/pre-commit',
 			'project/docs/nitro.md',
 			'src/patterns/molecules/example/example.html',
 			'src/patterns/molecules/example/schema.json',
-			'src/proto/js/prototype.js',
 			'src/views/index.html',
 			'src/views/_partials/head.html',
 			'src/views/_partials/foot.html',
@@ -308,6 +322,21 @@ module.exports = class extends Generator {
 		const ignoresOnUpdate = [
 			// files to ignore ono updating projects
 			'config/local.js',
+		];
+		const webpackFiles = [
+			// files only for this.options.bundler==='webpack'
+			'webpack.config.js',
+			'webpack/',
+			'gulp/watch-assets-resources.js',
+		];
+		const gulpFiles = [
+			// files only for this.options.bundler==='gulp'
+			'config/default/assets.js',
+			'gulp/watch-assets.js',
+			'gulp/compile-css.js',
+			'gulp/compile-css-proto.js',
+			'gulp/compile-js.js',
+			'src/proto/js/prototype.js',
 		];
 		const typeScriptFiles = [
 			// files only for this.options.js==='TypeScript'
@@ -375,6 +404,20 @@ module.exports = class extends Generator {
 			// exclude update ignores
 			if (this.update) {
 				if (_.indexOf(ignoresOnUpdate, file) !== -1) {
+					return;
+				}
+			}
+
+			// webpack only Files
+			if (this.options.bundler !== 'webpack') {
+				if (_.indexOf(webpackFiles, file) !== -1) {
+					return;
+				}
+			}
+
+			// gulp only Files
+			if (this.options.bundler !== 'gulp') {
+				if (_.indexOf(gulpFiles, file) !== -1) {
 					return;
 				}
 			}
